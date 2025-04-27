@@ -34,3 +34,6 @@ imu/hexmove/ref/*
 
 # dev
 ref/
+
+# env
+kscale/

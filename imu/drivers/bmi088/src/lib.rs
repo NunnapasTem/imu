@@ -10,6 +10,9 @@ use std::time::Duration;
 mod registers;
 use registers::{AccelRange, AccelRegisters, Constants, GyroRange, GyroRegisters};
 
+// async module
+pub mod asynchronous;
+
 // Add these constants at the top of the file
 pub const ACCEL_ADDR: u8 = 0x18; // Default BMI088 accelerometer address
 pub const GYRO_ADDR: u8 = 0x68; // Default BMI088 gyroscope address
@@ -315,3 +318,5 @@ mod tests {
         println!("BMI088 crate version: {}", env!("CARGO_PKG_VERSION"));
     }
 }
+
+
