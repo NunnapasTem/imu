@@ -4,6 +4,7 @@ use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
+use imu::{HiwonderOutput, ImuFrequency};
 use imu::{ImuReader, Quaternion, Vector3};
 
 // Wrap the Vector3 struct
@@ -173,11 +174,44 @@ fn create_bno055_reader(i2c_device: &str) -> PyResult<PyImuReader> {
     }
     #[cfg(not(target_os = "linux"))]
     {
-        // Suppress unused variable warning on non-Linux platforms
         let _ = i2c_device;
         Err(PyRuntimeError::new_err(
             "BNO055 reader is only available on Linux systems.",
         ))
+    }
+}
+
+#[pyclass(name = "HiwonderOutput")]
+#[derive(Clone)]
+pub enum PyHiwonderOutput {
+    TIME,
+    ACC,
+    GYRO,
+    ANGLE,
+    MAG,
+    PORT,
+    PRESS,
+    GPS,
+    VELOCITY,
+    QUATERNION,
+    GPSACCURACY,
+}
+
+impl PyHiwonderOutput {
+    fn to_hiwonder_output(&self) -> HiwonderOutput {
+        match self {
+            PyHiwonderOutput::TIME => HiwonderOutput::TIME,
+            PyHiwonderOutput::ACC => HiwonderOutput::ACC,
+            PyHiwonderOutput::GYRO => HiwonderOutput::GYRO,
+            PyHiwonderOutput::ANGLE => HiwonderOutput::ANGLE,
+            PyHiwonderOutput::MAG => HiwonderOutput::MAG,
+            PyHiwonderOutput::PORT => HiwonderOutput::PORT,
+            PyHiwonderOutput::PRESS => HiwonderOutput::PRESS,
+            PyHiwonderOutput::GPS => HiwonderOutput::GPS,
+            PyHiwonderOutput::VELOCITY => HiwonderOutput::VELOCITY,
+            PyHiwonderOutput::QUATERNION => HiwonderOutput::QUATERNION,
+            PyHiwonderOutput::GPSACCURACY => HiwonderOutput::GPS_ACCURACY,
+        }
     }
 }
 
@@ -187,6 +221,8 @@ fn create_hiwonder_reader(
     baud_rate: u32,
     timeout_secs: f64,
     auto_detect_baud_rate: bool,
+    outputs: Vec<PyHiwonderOutput>,
+    frequency: f32,
 ) -> PyResult<PyImuReader> {
     match imu::HiwonderReader::new(
         serial_port,
@@ -194,9 +230,63 @@ fn create_hiwonder_reader(
         Duration::from_secs_f64(timeout_secs),
         auto_detect_baud_rate,
     ) {
-        Ok(reader) => Ok(PyImuReader {
-            reader: Box::new(reader),
-        }),
+        Ok(reader) => {
+            reader
+                .set_output_mode(
+                    outputs
+                        .iter()
+                        .map(|o| o.clone().to_hiwonder_output())
+                        .reduce(|a, b| a | b)
+                        .unwrap_or(HiwonderOutput::GYRO),
+                    Duration::from_secs(1),
+                )
+                .map_err(|e| {
+                    PyRuntimeError::new_err(format!("Failed to set output mode: {}", e))
+                })?;
+
+            match frequency {
+                0.2 => reader
+                    .set_frequency(ImuFrequency::Hz0_2, Duration::from_secs(1))
+                    .map_err(|e| PyRuntimeError::new_err(e.to_string()))?,
+                0.5 => reader
+                    .set_frequency(ImuFrequency::Hz0_5, Duration::from_secs(1))
+                    .map_err(|e| PyRuntimeError::new_err(e.to_string()))?,
+                1.0 => reader
+                    .set_frequency(ImuFrequency::Hz1, Duration::from_secs(1))
+                    .map_err(|e| PyRuntimeError::new_err(e.to_string()))?,
+                2.0 => reader
+                    .set_frequency(ImuFrequency::Hz2, Duration::from_secs(1))
+                    .map_err(|e| PyRuntimeError::new_err(e.to_string()))?,
+                5.0 => reader
+                    .set_frequency(ImuFrequency::Hz5, Duration::from_secs(1))
+                    .map_err(|e| PyRuntimeError::new_err(e.to_string()))?,
+                10.0 => reader
+                    .set_frequency(ImuFrequency::Hz10, Duration::from_secs(1))
+                    .map_err(|e| PyRuntimeError::new_err(e.to_string()))?,
+                20.0 => reader
+                    .set_frequency(ImuFrequency::Hz20, Duration::from_secs(1))
+                    .map_err(|e| PyRuntimeError::new_err(e.to_string()))?,
+                50.0 => reader
+                    .set_frequency(ImuFrequency::Hz50, Duration::from_secs(1))
+                    .map_err(|e| PyRuntimeError::new_err(e.to_string()))?,
+                100.0 => reader
+                    .set_frequency(ImuFrequency::Hz100, Duration::from_secs(1))
+                    .map_err(|e| PyRuntimeError::new_err(e.to_string()))?,
+                200.0 => reader
+                    .set_frequency(ImuFrequency::Hz200, Duration::from_secs(1))
+                    .map_err(|e| PyRuntimeError::new_err(e.to_string()))?,
+                1.1 => reader
+                    .set_frequency(ImuFrequency::Single, Duration::from_secs(1))
+                    .map_err(|e| PyRuntimeError::new_err(e.to_string()))?,
+                0.0 => reader
+                    .set_frequency(ImuFrequency::None, Duration::from_secs(1))
+                    .map_err(|e| PyRuntimeError::new_err(e.to_string()))?,
+                _ => return Err(PyRuntimeError::new_err("Invalid frequency".to_string())),
+            }
+            Ok(PyImuReader {
+                reader: Box::new(reader),
+            })
+        }
         Err(e) => Err(PyRuntimeError::new_err(e.to_string())),
     }
 }
@@ -214,7 +304,6 @@ fn create_bmi088_reader(i2c_device: &str) -> PyResult<PyImuReader> {
     }
     #[cfg(not(target_os = "linux"))]
     {
-        // Suppress unused variable warning on non-Linux platforms
         let _ = i2c_device;
         Err(PyRuntimeError::new_err(
             "BMI088 reader is only available on Linux systems.",
@@ -235,7 +324,6 @@ fn create_hexmove_reader(can_interface: &str, node_id: u8, param_id: u8) -> PyRe
     }
     #[cfg(not(target_os = "linux"))]
     {
-        // Suppress unused variable warnings on non-Linux platforms
         let _ = (can_interface, node_id, param_id);
         Err(PyRuntimeError::new_err(
             "Hexmove reader is only available on Linux systems.",
@@ -248,6 +336,7 @@ fn bindings(m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<PyVector3>()?;
     m.add_class::<PyQuaternion>()?;
     m.add_class::<PyImuReader>()?;
+    m.add_class::<PyHiwonderOutput>()?;
 
     m.add_function(wrap_pyfunction!(create_bno055_reader, m)?)?;
 

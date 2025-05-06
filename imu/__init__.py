@@ -1,6 +1,7 @@
 """Defines the top-level API for the IMU package."""
 
 from .bindings import (
+    HiwonderOutput,
     ImuReader,
     Quaternion,
     Vector3,
@@ -22,9 +23,17 @@ def create_hiwonder(
     baud_rate: int = 115200,
     timeout_secs: float = 1.0,
     auto_detect_baud_rate: bool = False,
+    output_modes: list[HiwonderOutput] = [
+        HiwonderOutput.GYRO,
+        HiwonderOutput.ACC,
+        HiwonderOutput.ANGLE,
+        HiwonderOutput.MAG,
+        HiwonderOutput.QUATERNION,
+    ],
+    frequency: float = 100.0,
 ) -> ImuReader:
     """Create a Hiwonder IMU reader on the specified serial port."""
-    return create_hiwonder_reader(serial_port, baud_rate, timeout_secs, auto_detect_baud_rate)
+    return create_hiwonder_reader(serial_port, baud_rate, timeout_secs, auto_detect_baud_rate, output_modes, frequency)
 
 
 def create_bmi088(i2c_device: str = "/dev/i2c-1") -> ImuReader:
@@ -50,4 +59,5 @@ __all__ = [
     "create_hiwonder_reader",
     "create_bmi088_reader",
     "create_hexmove_reader",
+    "HiwonderOutput",
 ]

@@ -104,19 +104,6 @@ impl HiwonderReader {
             guard.clear_buffer();
         }
 
-        let enabled_outputs = Output::ACC | Output::GYRO | Output::ANGLE | Output::QUATERNION;
-
-        let setup_timeout = Duration::from_secs(1);
-        reader.write_command(
-            &EnableOutputCommand::new(enabled_outputs),
-            true,
-            setup_timeout,
-        )?;
-        reader.write_command(
-            &SetFrequencyCommand::new(ImuFrequency::Hz200),
-            true,
-            setup_timeout,
-        )?;
         reader.start_reading_thread()?;
 
         Ok(reader)
@@ -474,7 +461,7 @@ impl HiwonderReader {
             mode: &'a Arc<RwLock<ImuMode>>,
         }
 
-        impl<'a> Drop for ModeGuard<'a> {
+        impl Drop for ModeGuard<'_> {
             fn drop(&mut self) {
                 if let Ok(mut guard) = self.mode.write() {
                     *guard = ImuMode::Read; // Always set back to Read on exit
